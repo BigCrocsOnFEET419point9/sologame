@@ -1088,7 +1088,7 @@ void Sprite::PopulateDebugger()
   Object::PopulateDebugger();
 }
 
-/////////////////////////////////////////////////////////
+
 
 UniformSpritesheet::UniformSpritesheet(Object *parent, std::string name)
     : UniformSpritesheet::UniformSpritesheet("", 0, parent, name)

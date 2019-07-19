@@ -2,20 +2,68 @@
 #include "Graphics.cpp"
 #include "GameState.cpp"
 #include "Transform.cpp"
+#include <algorithm>
+
+class Background : public Aspen::Object::Object
+{
+ Aspen::Graphics::Sprite *sprite; 
+public:
+  Background(Object *parent = nullptr, std::string name = "Background") : Aspen::Object::Object(parent, name)
+  {
+    sprite = new Aspen::Graphics::Sprite("./resources/background.png", this, "Background");
+    AddChild(sprite);
+    CreateChild<Aspen::Transform::Transform>();
+    GetTransform()->SetPosition(640,310);
+  }
+
+
+};
 
 class Platform : public Aspen::Object::Object
 {
- Aspen::Graphics::Animation *sprite; 
+ Aspen::Graphics::Sprite *sprite; 
 public:
   Platform(Object *parent = nullptr, std::string name = "Platform") : Aspen::Object::Object(parent, name)
   {
-    sprite = new Aspen::Graphics::Animation(
-      new Aspen::Graphics::UniformSpritesheet("./resources/platform.png", 800, 50, 6, nullptr, "BaloonSpritesheet"),
-      1.0f / 0.0f, this, "Baloon");
+    sprite = new Aspen::Graphics::Sprite("./resources/platform.png", this, "Platform");
     AddChild(sprite);
     CreateChild<Aspen::Transform::Transform>();
-    GetTransform()->SetPosition(300,300);
-    CreateChild<Aspen::Physics::AABBCollider>()->SetSize(800, 30);
+    GetTransform()->SetPosition(640,850);
+    CreateChild<Aspen::Physics::AABBCollider>()->SetSize(540, 30);
+
+  }
+
+
+};
+
+class Platform2 : public Aspen::Object::Object
+{
+ Aspen::Graphics::Sprite *sprite; 
+public:
+  Platform2(Object *parent = nullptr, std::string name = "Platform2") : Aspen::Object::Object(parent, name)
+  {
+    sprite = new Aspen::Graphics::Sprite("./resources/platform.png", this, "Platform2");
+    AddChild(sprite);
+    CreateChild<Aspen::Transform::Transform>();
+    GetTransform()->SetPosition(800,1000);
+    CreateChild<Aspen::Physics::AABBCollider>()->SetSize(1280, 30);
+
+  }
+
+
+};
+
+class Wall : public Aspen::Object::Object
+{
+ Aspen::Graphics::Sprite *sprite; 
+public:
+  Wall(Object *parent = nullptr, std::string name = "Wall") : Aspen::Object::Object(parent, name)
+  {
+    sprite = new Aspen::Graphics::Sprite("./resources/wall.png", this, "Platform");
+    AddChild(sprite);
+    CreateChild<Aspen::Transform::Transform>();
+    GetTransform()->SetPosition(640,630);
+    CreateChild<Aspen::Physics::AABBCollider>()->SetSize(16, 160);
 
   }
 
@@ -28,6 +76,7 @@ class Player : public Aspen::Object::Object
   Aspen::Graphics::Animation *sprite2;
  
   bool onGround = false;
+  Aspen::Graphics::Camera *cam;
 
 public:
   Player(Object *parent = nullptr, std::string name = "Player") : Aspen::Object::Object(parent, name)
@@ -48,13 +97,25 @@ public:
     CreateChild<Aspen::Physics::Rigidbody>();
     CreateChild<Aspen::Physics::AABBCollider>()->SetSize(160,160);
     GetTransform()->SetPosition(300,300);
+
   }
-  
-  void OnUpdate()
+  void OnStart()
   {
+    cam = FindAncestorOfType<Aspen::GameState::GameState>()->CreateChild<Aspen::Graphics::Camera>();
+    cam->SelectCamera();
+  }
+  void OnUpdate()
+  { 
+    float cx = GetTransform()->GetXPosition()
+      - 1280/ 2.0f;
+
+    float cy = GetTransform()->GetYPosition()
+      - 720/ 2.0f;
+
     double xv = GetRigidbody()->GetVelocityX();
     double yv = GetRigidbody()->GetVelocityY();
-
+    cam->GetTransform()->SetPosition(cx, cy);
+    
     if (Aspen::Input::KeyHeld(SDLK_d) && !Aspen::Input::KeyHeld(SDLK_a))
     {
       Aspen::Log::Info("D is held");
@@ -63,7 +124,7 @@ public:
       sprite2->GetTransform()->SetXScale(1);
       if (onGround == false)
       { 
-        xv = 7;
+        xv = 10;
       }
       else
       {
@@ -78,7 +139,7 @@ public:
       sprite2->GetTransform()->SetXScale(-1);
       if (onGround == false)
       {
-        xv = -7;
+        xv = -10;
       }
       else
       {
@@ -92,7 +153,7 @@ public:
     }
     
     
-    if (GetTransform()->GetYPosition() > 400)
+    if (GetTransform()->GetYPosition() > 1500)
     {
       GetTransform()->SetYPosition(400); 
       yv = 0;
@@ -117,22 +178,25 @@ public:
   }
 };
 
-class MainMenu : public Aspen::GameState::GameState
+class State : public Aspen::GameState::GameState
 {
   Aspen::Graphics::UI::Text *title;
   Player character; 
   
 public:
-  MainMenu(Object *parent = nullptr, std::string name = "MainMenu") : GameState(parent, name)
+  State(Object *parent = nullptr, std::string name = "State") : GameState(parent, name)
   {
-    title = new Aspen::Graphics::UI::Text("Aweseom gmae!", "default" , 64, this, "Title");
+    /*title = new Aspen::Graphics::UI::Text("Aweseom gmae!", "default" , 64, this, "Title");
     AddChild(title);
     title->GetTransform()->SetPosition(310, 140);
     title->GetTransform()->SetRotation(-0.069f);
-    title->GetTransform()->SetScale(1, 1);
+    title->GetTransform()->SetScale(1, 1);*/
 
+    CreateChild<Background>();
     CreateChild<Player>();
     CreateChild<Platform>();
+    CreateChild<Platform2>();
+    CreateChild<Wall>();
   }
 };
 
@@ -140,13 +204,22 @@ int main(int argc, char **argv)
 {
   Aspen::Log::Log::SetFile("./Aspen.log");
 
-  Aspen::Engine::Engine engine(Aspen::Engine::START_FLAGS::ALL);
-  engine.FindChildOfType<Aspen::Physics::Physics>()->SetGravityStrength(1);
+  Aspen::Engine::Engine engine(Aspen::Engine::START_FLAGS::ALL ^ (
+    Aspen::Engine::START_FLAGS::CREATE_GRAPHICS |
+    Aspen::Engine::START_FLAGS::CREATE_GRAPHICS_DEBUGGER |
+    Aspen::Engine::START_FLAGS::CREATE_GRAPHICS_FONTCACHE
+  ));
+  Aspen::Graphics::Graphics *gfx = new Aspen::Graphics::Graphics(1280, 720, &engine, "Graphics");
+  gfx->CreateChild<Aspen::Debug::Debug>();
+  gfx->CreateChild<Aspen::Graphics::FontCache>();
+  engine.AddChild(gfx);
+
+  engine.FindChildOfType<Aspen::Physics::Physics>()->SetGravityStrength(0.80f);
   engine.FindChildOfType<Aspen::Physics::Physics>()->SetDrag(0.1);
   engine.FindChildOfType<Aspen::Time::Time>()->TargetFramerate(60);
   engine.FindChildOfType<Aspen::Graphics::Graphics>()->FindChildOfType<Aspen::Graphics::FontCache>()->LoadFont("resources/ABeeZee-Regular.ttf", "default");
 
-  engine.FindChildOfType<Aspen::GameState::GameStateManager>()->LoadState<MainMenu>(true);
+  engine.FindChildOfType<Aspen::GameState::GameStateManager>()->LoadState<State>(true);
   //engine.FindChildOfType<GameStateManager>()->LoadState<Game>(false);
 
     while (engine)
